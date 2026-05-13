@@ -42,7 +42,7 @@ as a final project for Computer Programming Laboratory 2.
 ---
 
 ## 📷 Screenshots
-> *(Add screenshots here once the UI is done)*
+> *SCREENSHOT PAG TAPOS NA*
 
 ---
 
