@@ -9,11 +9,11 @@ as a final project for Computer Programming Laboratory 2.
 
 | Name | Role |
 |------|------|
-| Reindel Andrada | Project Lead |
-| Aaron Francisco | Developer | //di pa maayos wait
-| Keith | Developer |
-| Kerby James Bulao | Developer |
-| Samantha Del Rosario | Developer |
+| Reindel Andrada | BackEnd Dev |
+| Aaron Francisco | Solution Architect | //di pa maayos wait
+| Keith | UI/UX |
+| Kerby James Bulao | Software Engineer |
+| Samantha Del Rosario | QA Engineer  |
 
 ---
 
