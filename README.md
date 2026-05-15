@@ -10,10 +10,10 @@ as a final project for Computer Programming Laboratory 2.
 | Name | Role |
 |------|------|
 | Reindel Andrada | BackEnd Dev |
-| Aaron Francisco | Solution Architect | //di pa maayos wait
-| Keith | UI/UX Design |
-| Kerby James Bulao | Software Engineer |
-| Samantha Del Rosario | QA Engineer  |
+| Aaron Francisco | UI/UX Design | //di pa maayos wait
+| Keith | Feature Dev |
+| Kerby James Bulao | Backend Dev |
+| Samantha Del Rosario | QA Eng/Docu |
 
 ---
 
