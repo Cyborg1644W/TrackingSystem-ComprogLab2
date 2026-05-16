@@ -11,7 +11,348 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>BankTracker — Banking &amp; Investment Tracker</string>
+   <string>BankTracker — Private Vault</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+/* ── Global ── */
+QMainWindow, QWidget {
+  background-color: #141414;
+  color: #e8e8e8;
+  font-family: &quot;Segoe UI&quot;, &quot;Inter&quot;, sans-serif;
+  font-size: 13px;
+}
+
+/* ── Sidebar ── */
+QFrame#sidebar {
+  background-color: #0f0f0f;
+  border-right: 1px solid #2a2a2a;
+  min-width: 210px;
+  max-width: 210px;
+}
+
+QLabel#logoText {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+QLabel#logoIcon {
+  background-color: #f0a500;
+  color: #000000;
+  font-weight: 800;
+  font-size: 12px;
+  border-radius: 6px;
+}
+QLabel#lblDay {
+  color: #666666;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+QLabel#lblWelcome {
+  color: #cccccc;
+  font-size: 13px;
+  font-weight: 600;
+}
+QLabel#navSectionMain, QLabel#navSectionReports {
+  color: #555555;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 8px 4px 2px 4px;
+}
+
+/* Nav buttons */
+QPushButton#navDashboard, QPushButton#navAccounts,
+QPushButton#navSavings, QPushButton#navInvestments,
+QPushButton#navSummary, QPushButton#navTransactions {
+  background-color: transparent;
+  color: #888888;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 13px;
+}
+QPushButton#navDashboard:hover, QPushButton#navAccounts:hover,
+QPushButton#navSavings:hover, QPushButton#navInvestments:hover,
+QPushButton#navSummary:hover, QPushButton#navTransactions:hover {
+  background-color: #1e1e1e;
+  color: #e8e8e8;
+}
+QPushButton#navDashboard:checked, QPushButton#navAccounts:checked,
+QPushButton#navSavings:checked, QPushButton#navInvestments:checked,
+QPushButton#navSummary:checked, QPushButton#navTransactions:checked {
+  background-color: #1e1e1e;
+  color: #f0a500;
+  border-left: 3px solid #f0a500;
+}
+
+/* Footer card */
+QFrame#footerCard {
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+}
+QLabel#footerTitle {
+  color: #f0a500;
+  font-size: 12px;
+  font-weight: 700;
+}
+QLabel#footerSub {
+  color: #555555;
+  font-size: 11px;
+}
+
+/* ── Top Bar ── */
+QFrame#topBar {
+  background-color: #0f0f0f;
+  border-bottom: 1px solid #2a2a2a;
+  min-height: 54px;
+  max-height: 54px;
+}
+QLabel#titleLabel {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+}
+QLabel#monthPill {
+  background-color: #1e1e1e;
+  color: #888888;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+/* Search bar */
+QLineEdit#searchBar {
+  background-color: #1a1a1a;
+  color: #cccccc;
+  border: 1px solid #2a2a2a;
+  border-radius: 18px;
+  padding: 6px 14px;
+  font-size: 12px;
+  min-width: 200px;
+}
+QLineEdit#searchBar:focus {
+  border: 1px solid #f0a500;
+}
+
+/* Category filter */
+QComboBox#categoryFilter {
+  background-color: #1a1a1a;
+  color: #cccccc;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 5px 10px;
+  min-width: 110px;
+}
+QComboBox#categoryFilter::drop-down { border: none; }
+QComboBox#categoryFilter QAbstractItemView {
+  background-color: #1e1e1e;
+  color: #cccccc;
+  border: 1px solid #2a2a2a;
+  selection-background-color: #f0a500;
+  selection-color: #000000;
+}
+
+/* ── Stat Cards ── */
+QFrame#card1, QFrame#card2, QFrame#card3 {
+  background-color: #1a1a1a;
+  border: 1px solid #f0a500;
+  border-radius: 8px;
+}
+QLabel#card1Label, QLabel#card2Label, QLabel#card3Label {
+  color: #f0a500;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+}
+QLabel#card1Icon, QLabel#card2Icon, QLabel#card3Icon {
+  font-size: 18px;
+}
+QLabel#lblTotalAccounts, QLabel#lblTotalSavings, QLabel#lblTotalInvestments {
+  color: #f0a500;
+  font-size: 26px;
+  font-weight: 800;
+}
+QLabel#card1Sub, QLabel#card2Sub, QLabel#card3Sub {
+  color: #4caf50;
+  font-size: 11px;
+}
+
+/* ── Form Panel ── */
+QFrame#formPanel {
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  min-width: 240px;
+  max-width: 280px;
+}
+QLabel#formTitle {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  padding-bottom: 4px;
+}
+QLabel#lblName, QLabel#lblType, QLabel#lblSavings,
+QLabel#lblInvestments, QLabel#lblMonths, QLabel#lblInterest {
+  color: #666666;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+QLineEdit#inputName {
+  background-color: #252525;
+  color: #e8e8e8;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  padding: 6px 10px;
+}
+QLineEdit#inputName:focus {
+  border: 1px solid #f0a500;
+}
+
+QComboBox#comboAccountType {
+  background-color: #252525;
+  color: #e8e8e8;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  padding: 5px 10px;
+}
+QComboBox#comboAccountType::drop-down { border: none; }
+QComboBox#comboAccountType QAbstractItemView {
+  background-color: #1e1e1e;
+  color: #cccccc;
+  border: 1px solid #2a2a2a;
+  selection-background-color: #f0a500;
+  selection-color: #000000;
+}
+
+QDoubleSpinBox#inputSavings, QDoubleSpinBox#inputInvestments,
+QSpinBox#spinMonths, QDoubleSpinBox#spinInterest {
+  background-color: #252525;
+  color: #e8e8e8;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  padding: 5px 8px;
+}
+QDoubleSpinBox#inputSavings:focus, QDoubleSpinBox#inputInvestments:focus,
+QSpinBox#spinMonths:focus, QDoubleSpinBox#spinInterest:focus {
+  border: 1px solid #f0a500;
+}
+QDoubleSpinBox::up-button, QDoubleSpinBox::down-button,
+QSpinBox::up-button, QSpinBox::down-button {
+  background-color: #333333;
+  border: none;
+  width: 16px;
+}
+QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover,
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+  background-color: #f0a500;
+}
+
+/* Action buttons */
+QPushButton#btnAdd {
+  background-color: #f0a500;
+  color: #000000;
+  border: none;
+  border-radius: 5px;
+  padding: 7px 14px;
+  font-weight: 700;
+  font-size: 12px;
+}
+QPushButton#btnAdd:hover { background-color: #ffb800; }
+QPushButton#btnAdd:pressed { background-color: #cc8c00; }
+
+QPushButton#btnDelete {
+  background-color: transparent;
+  color: #cc4444;
+  border: 1px solid #cc4444;
+  border-radius: 5px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+QPushButton#btnDelete:hover {
+  background-color: #cc4444;
+  color: #ffffff;
+}
+
+QPushButton#btnClear {
+  background-color: transparent;
+  color: #666666;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+QPushButton#btnClear:hover {
+  background-color: #252525;
+  color: #cccccc;
+}
+
+/* ── Table Panel ── */
+QFrame#tablePanel {
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+}
+QFrame#tableHeaderBar {
+  background-color: transparent;
+  min-height: 42px;
+  max-height: 42px;
+  border-bottom: 1px solid #2a2a2a;
+}
+QLabel#tableTitle {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+}
+QLabel#tableHint {
+  color: #555555;
+  font-size: 11px;
+}
+
+QTableWidget#tableWidget {
+  background-color: #1a1a1a;
+  color: #cccccc;
+  border: none;
+  gridline-color: transparent;
+  selection-background-color: #252525;
+  selection-color: #f0a500;
+  outline: none;
+  font-size: 13px;
+}
+QTableWidget#tableWidget::item {
+  padding: 10px 12px;
+  border-bottom: 1px solid #222222;
+}
+QTableWidget#tableWidget::item:selected {
+  background-color: #252525;
+  color: #f0a500;
+}
+QHeaderView::section {
+  background-color: #141414;
+  color: #555555;
+  border: none;
+  border-bottom: 1px solid #2a2a2a;
+  padding: 8px 12px;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+QScrollBar:vertical {
+  background-color: #141414;
+  width: 6px;
+  border: none;
+}
+QScrollBar::handle:vertical {
+  background-color: #333333;
+  border-radius: 3px;
+  min-height: 30px;
+}
+QScrollBar::handle:vertical:hover { background-color: #f0a500; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+   </string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QHBoxLayout" name="mainLayout">
@@ -128,15 +469,14 @@
           <item>
            <widget class="QLabel" name="lblDay">
             <property name="text">
-             <string>MONDAY, MAY 16</string>
+             <string>PRIVATE VAULT</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QLabel" name="lblWelcome">
             <property name="text">
-             <string>Welcome back,
-Admin</string>
+             <string>BankTracker</string>
             </property>
            </widget>
           </item>
@@ -480,7 +820,7 @@ Admin</string>
              <item>
               <widget class="QLabel" name="card1Sub">
                <property name="text">
-                <string>Active holders</string>
+                <string>+0  active holders</string>
                </property>
               </widget>
              </item>
@@ -865,6 +1205,54 @@ Admin</string>
               <number>0</number>
              </property>
              <item>
+              <widget class="QFrame" name="tableHeaderBar">
+               <property name="frameShape">
+                <enum>QFrame::Shape::NoFrame</enum>
+               </property>
+               <layout class="QHBoxLayout" name="tableHeaderLayout">
+                <property name="leftMargin">
+                 <number>16</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>16</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="tableTitle">
+                  <property name="text">
+                   <string>Account Holders</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer>
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>0</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QLabel" name="tableHint">
+                  <property name="text">
+                   <string>Click any row to select</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
               <widget class="QTableWidget" name="tableWidget">
                <property name="editTriggers">
                 <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
@@ -922,54 +1310,6 @@ Admin</string>
                  <string>Status</string>
                 </property>
                </column>
-              </widget>
-             </item>
-             <item>
-              <widget class="QFrame" name="tableHeaderBar">
-               <property name="frameShape">
-                <enum>QFrame::Shape::NoFrame</enum>
-               </property>
-               <layout class="QHBoxLayout" name="tableHeaderLayout">
-                <property name="leftMargin">
-                 <number>16</number>
-                </property>
-                <property name="topMargin">
-                 <number>0</number>
-                </property>
-                <property name="rightMargin">
-                 <number>16</number>
-                </property>
-                <property name="bottomMargin">
-                 <number>0</number>
-                </property>
-                <item>
-                 <widget class="QLabel" name="tableTitle">
-                  <property name="text">
-                   <string>Account Holders</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer>
-                  <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>0</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item>
-                 <widget class="QLabel" name="tableHint">
-                  <property name="text">
-                   <string>Click any row to select</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
               </widget>
              </item>
             </layout>
