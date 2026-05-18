@@ -35,9 +35,9 @@ as a final project for Computer Programming Laboratory 2.
 
 ## 🚀 How to Run
 1. Clone the repository
-```git clone https://github.com/yourusername/tracking-system.git```
-2. Open the `.pro` file in **Qt Creator**
-3. Build and Run the project
+```git clone https://github.com/Cyborg1644W/tracking-system.git```
+3. Open the `.pro` file in **Qt Creator**
+4. Build and Run the project
 
 ---
 
