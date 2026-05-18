@@ -4,7 +4,11 @@
 #include <QMainWindow>
 #include <QVector>
 #include <QString>
+#include <QByteArray>
 
+class CompoundInterestChart;
+class QEvent;
+class QProgressBar;
 class QPushButton;
 class QWidget;
 
@@ -35,6 +39,10 @@ class MainWindow : public QMainWindow {
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    bool authenticateAdmin();
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
     void on_btnAdd_clicked();
@@ -58,6 +66,10 @@ private:
     Ui::MainWindow *ui;
     QString lightThemeStyle;
     int editingAccountIndex = -1;
+    bool sidebarCollapsed = false;
+    QPushButton *sidebarToggleButton = nullptr;
+    QProgressBar *loadingBar = nullptr;
+    CompoundInterestChart *investmentChart = nullptr;
 
     // ── Data (Reindel) ─────────────────────────
     QVector<AccountHolder> accounts;  // Master list — no parallel arrays
@@ -76,6 +88,27 @@ private:
     void scrollRightRailTo(QWidget *widget);
     void setFormMode(bool editing);
     void selectAccountInTable(int accountIndex);
+    void setupModernUi();
+    void setRightRailVisible(bool visible);
+    void collapseEditPanel();
+    void toggleSidebar();
+    void showLoader();
+    void loadAccounts();
+    void saveAccounts() const;
+    QString dataFilePath() const;
+    QString buildLightThemeStyle() const;
+    QString formatCurrency(double value) const;
+    QString formatAccountAge(int months) const;
+    double calculatedInterestRate(const QString &accountType,
+                                  int months,
+                                  double savings,
+                                  double investments) const;
+    void updateAutomatedInterest();
+    void updateInvestmentChart();
+    void ensureAdminCredentials();
+    QByteArray adminPasswordHash(const QString &password, const QByteArray &salt) const;
+    bool verifyAdminPassword(const QString &password) const;
+    bool changeAdminPassword();
 };
 
 #endif // MAINWINDOW_.
