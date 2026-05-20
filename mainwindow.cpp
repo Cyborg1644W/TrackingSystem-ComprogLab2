@@ -19,7 +19,9 @@
 #include <QFile>
 #include <QFormLayout>
 #include <QFont>
+#include <QFrame>
 #include <QHeaderView>
+#include <QHBoxLayout>
 #include <QInputDialog>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -42,6 +44,7 @@
 #include <QStandardPaths>
 #include <QStyle>
 #include <QTableWidgetItem>
+#include <QTableWidget>
 #include <QTimer>
 #include <QVariantAnimation>
 #include <QVBoxLayout>
@@ -63,10 +66,6 @@ bool isInsideWidget(QWidget *candidate, QWidget *ancestor)
     return false;
 }
 
-QString pluralize(int value, const QString &singular, const QString &plural)
-{
-    return QString::number(value) + " " + (value == 1 ? singular : plural);
-}
 }
 
 class CompoundInterestChart : public QWidget {
@@ -74,15 +73,14 @@ public:
     explicit CompoundInterestChart(QWidget *parent = nullptr)
         : QWidget(parent)
     {
-        setMinimumHeight(128);
+        setMinimumHeight(260);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     }
 
-    void setProjection(double principalAmount, double annualRatePercent, int durationMonths)
+    void setProjection(double principalAmount, double annualRatePercent)
     {
         principal = std::max(0.0, principalAmount);
         annualRate = std::max(0.0, annualRatePercent);
-        months = std::max(0, durationMonths);
         update();
     }
 
@@ -99,83 +97,64 @@ protected:
         painter.setBrush(QColor("#F7FAFC"));
         painter.drawRoundedRect(bounds, 8, 8);
 
-        QRectF plot = bounds.adjusted(34, 18, -18, -28);
+        QRectF plot = bounds.adjusted(46, 24, -24, -46);
         painter.setPen(QPen(QColor("#D7E0EA"), 1));
         painter.drawLine(plot.bottomLeft(), plot.bottomRight());
         painter.drawLine(plot.bottomLeft(), plot.topLeft());
 
-        if (principal <= 0.0 || months <= 0) {
+        if (principal <= 0.0) {
             painter.setPen(QColor("#607086"));
             painter.setFont(QFont("Segoe UI", 9, QFont::DemiBold));
             painter.drawText(bounds, Qt::AlignCenter, "No projection data yet");
             return;
         }
 
+        const QVector<int> years = {5, 10, 20, 40};
         QVector<double> values;
-        values.reserve(months + 1);
-        const double monthlyRate = annualRate / 100.0 / 12.0;
         double maxValue = principal;
-
-        for (int month = 0; month <= months; ++month) {
-            const double value = principal * std::pow(1.0 + monthlyRate, month);
+        for (int year : years) {
+            const double value = principal * std::pow(1.0 + (annualRate / 100.0), year);
             values.append(value);
             maxValue = std::max(maxValue, value);
         }
 
-        if (maxValue <= 0.0) {
-            maxValue = 1.0;
-        }
-
-        QPainterPath linePath;
-        QPainterPath fillPath;
-
-        auto pointFor = [&](int month, double value) {
-            const double xRatio = months == 0 ? 0.0 : static_cast<double>(month) / months;
-            const double yRatio = value / maxValue;
-            return QPointF(plot.left() + plot.width() * xRatio,
-                           plot.bottom() - plot.height() * yRatio);
-        };
-
-        QPointF firstPoint = pointFor(0, values.first());
-        linePath.moveTo(firstPoint);
-        fillPath.moveTo(plot.left(), plot.bottom());
-        fillPath.lineTo(firstPoint);
-
-        for (int month = 1; month < values.size(); ++month) {
-            const QPointF point = pointFor(month, values[month]);
-            linePath.lineTo(point);
-            fillPath.lineTo(point);
-        }
-
-        fillPath.lineTo(plot.right(), plot.bottom());
-        fillPath.closeSubpath();
-
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(46, 111, 191, 36));
-        painter.drawPath(fillPath);
-
-        painter.setPen(QPen(QColor("#2E6FBF"), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        painter.drawPath(linePath);
-
-        const QPointF lastPoint = pointFor(months, values.last());
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor("#2E6FBF"));
-        painter.drawEllipse(lastPoint, 4.5, 4.5);
-
+        painter.setPen(QPen(QColor("#E2E8F0"), 1, Qt::DashLine));
+        const double capitalY = plot.bottom() - plot.height() * (principal / maxValue);
+        painter.drawLine(QPointF(plot.left(), capitalY), QPointF(plot.right(), capitalY));
         painter.setPen(QColor("#607086"));
         painter.setFont(QFont("Segoe UI", 8, QFont::DemiBold));
-        painter.drawText(QRectF(bounds.left() + 8, bounds.bottom() - 22, 120, 18),
+        painter.drawText(QRectF(plot.left(), capitalY - 18, 150, 16),
                          Qt::AlignLeft | Qt::AlignVCenter,
-                         "0 mo");
-        painter.drawText(QRectF(bounds.right() - 96, bounds.bottom() - 22, 88, 18),
-                         Qt::AlignRight | Qt::AlignVCenter,
-                         QString::number(months) + " mo");
+                         "Capital " + compactCurrency(principal));
 
-        painter.setPen(QColor("#1F2A37"));
-        painter.setFont(QFont("Segoe UI", 9, QFont::Bold));
-        painter.drawText(QRectF(bounds.left() + 10, bounds.top() + 8, bounds.width() - 20, 18),
-                         Qt::AlignLeft | Qt::AlignVCenter,
-                         compactCurrency(values.last()) + " projected");
+        const double segment = plot.width() / values.size();
+        const double barWidth = std::min(86.0, segment * 0.48);
+        for (int i = 0; i < values.size(); ++i) {
+            const double ratio = maxValue <= 0.0 ? 0.0 : values[i] / maxValue;
+            const double barHeight = plot.height() * ratio;
+            const double x = plot.left() + segment * i + (segment - barWidth) / 2.0;
+            const QRectF bar(x, plot.bottom() - barHeight, barWidth, barHeight);
+
+            QColor fill = i == 0 ? QColor("#8AB4F8")
+                         : i == 1 ? QColor("#2E6FBF")
+                         : i == 2 ? QColor("#1F8A70")
+                                  : QColor("#F2B84B");
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(fill);
+            painter.drawRoundedRect(bar, 8, 8);
+
+            painter.setPen(QColor("#1F2A37"));
+            painter.setFont(QFont("Segoe UI", 8, QFont::Bold));
+            painter.drawText(QRectF(x - 24, bar.top() - 22, barWidth + 48, 18),
+                             Qt::AlignCenter,
+                             compactCurrency(values[i]));
+
+            painter.setPen(QColor("#607086"));
+            painter.setFont(QFont("Segoe UI", 9, QFont::DemiBold));
+            painter.drawText(QRectF(x - 10, plot.bottom() + 8, barWidth + 20, 20),
+                             Qt::AlignCenter,
+                             QString::number(years[i]) + " yrs");
+        }
     }
 
 private:
@@ -192,7 +171,6 @@ private:
 
     double principal = 0.0;
     double annualRate = 0.0;
-    int months = 0;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -210,8 +188,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupModernUi();
 
     QStringList headers = {"Card Number", "Name", "Username", "Account Type",
-                           "Savings (" + PesoSymbol + ")", "Investments (" + PesoSymbol + ")", "Account Age",
-                           "Interest Rate", "Status"};
+                           "Savings (" + PesoSymbol + ")", "Interest Rate", "Status"};
     ui->tableWidget->setColumnCount(headers.size());
     ui->tableWidget->setHorizontalHeaderLabels(headers);
     ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -229,10 +206,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableWidget->setColumnWidth(2, 132);
     ui->tableWidget->setColumnWidth(3, 130);
     ui->tableWidget->setColumnWidth(4, 122);
-    ui->tableWidget->setColumnWidth(5, 132);
-    ui->tableWidget->setColumnWidth(6, 142);
-    ui->tableWidget->setColumnWidth(7, 116);
-    ui->tableWidget->setColumnWidth(8, 110);
+    ui->tableWidget->setColumnWidth(5, 116);
+    ui->tableWidget->setColumnWidth(6, 110);
 
     // ── Category filter options (Aaron) ───────────────────────────────────
     ui->categoryFilter->addItems({"All", "Savings", "Stocks", "Time Deposit", "UITF"});
@@ -245,36 +220,33 @@ MainWindow::MainWindow(QWidget *parent)
     ui->comboAccountType->addItems({"Savings", "Stocks", "Time Deposit", "UITF"});
     ui->comboStatus->addItems({"Active", "Inactive", "Suspended"});
     ui->sortCombo->addItems({"Sort: Latest", "Alphabetical", "Savings: High to Low",
-                             "Username", "Investments: High to Low", "Account Age"});
+                             "Username", "Status"});
+    applyComboPopupTheme(false);
 
     ui->contentLayout->setStretch(3, 1);
     ui->mainWorkspaceLayout->setStretch(0, 1);
     ui->mainWorkspaceLayout->setStretch(1, 0);
     setActiveNav(ui->btnDashboard);
+    ui->screenSubtitle->setText("Monitor account savings, account status, and administrative activity.");
 
     ui->inputCardNumber->setInputMask("9999 9999 9999 9999;_");
     ui->inputSavings->setButtonSymbols(QAbstractSpinBox::NoButtons);
-    ui->inputInvestments->setButtonSymbols(QAbstractSpinBox::NoButtons);
-    ui->spinMonths->setButtonSymbols(QAbstractSpinBox::NoButtons);
     ui->spinInterest->setButtonSymbols(QAbstractSpinBox::NoButtons);
     ui->inputSavings->setGroupSeparatorShown(true);
-    ui->inputInvestments->setGroupSeparatorShown(true);
-    ui->spinMonths->setGroupSeparatorShown(true);
     ui->inputSavings->setSingleStep(1000.0);
-    ui->inputInvestments->setSingleStep(1000.0);
-    ui->spinMonths->setSingleStep(1);
     ui->spinInterest->setSingleStep(0.25);
     ui->inputSavings->setAlignment(Qt::AlignRight);
-    ui->inputInvestments->setAlignment(Qt::AlignRight);
-    ui->spinMonths->setAlignment(Qt::AlignRight);
     ui->spinInterest->setAlignment(Qt::AlignRight);
     ui->inputSavings->setSpecialValueText("");
-    ui->inputInvestments->setSpecialValueText("");
-    ui->spinMonths->setSpecialValueText("");
     ui->spinInterest->setReadOnly(true);
     ui->spinInterest->setSpecialValueText("Auto");
     ui->spinInterest->setFocusPolicy(Qt::NoFocus);
-    ui->spinInterest->setToolTip("Calculated automatically from account type, amount, and term.");
+    ui->spinInterest->setToolTip("Calculated automatically from account savings.");
+    ui->inputInvestments->hide();
+    ui->spinMonths->hide();
+    ui->statusLegendActive->hide();
+    ui->statusLegendInactive->hide();
+    ui->statusLegendSuspended->hide();
 
     const QList<QWidget *> focusWidgets = {
         ui->searchBar,
@@ -285,9 +257,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->inputCardNumber,
         ui->comboAccountType,
         ui->comboStatus,
-        ui->inputSavings,
-        ui->inputInvestments,
-        ui->spinMonths
+        ui->inputSavings
     };
     for (QWidget *widget : focusWidgets) {
         widget->setFocusPolicy(Qt::StrongFocus);
@@ -296,14 +266,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->comboAccountType, &QComboBox::currentTextChanged,
             this, &MainWindow::updateAutomatedInterest);
-    connect(ui->spinMonths, QOverload<int>::of(&QSpinBox::valueChanged),
-            this, [this](int) { updateAutomatedInterest(); updateInvestmentChart(); });
     connect(ui->inputSavings, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-            this, [this](double) { updateAutomatedInterest(); updateInvestmentChart(); });
-    connect(ui->inputInvestments, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
             this, [this](double) { updateAutomatedInterest(); updateInvestmentChart(); });
     setFormMode(false);
     setRightRailVisible(false);
+    setupMainViews();
+    showAccountsView();
     qApp->installEventFilter(this);
 
     // ── Initial summary cards (Reindel) ───────────────────────────────────
@@ -336,9 +304,9 @@ void MainWindow::on_btnAdd_clicked()
     compactCard.remove(' ');
     QString accountType = ui->comboAccountType->currentText();
     double  savings     = ui->inputSavings->value();
-    double  investments = ui->inputInvestments->value();
-    int     months      = ui->spinMonths->value();
-    double  interest    = calculatedInterestRate(accountType, months, savings, investments);
+    double  investments = 0.0;
+    int     months      = 0;
+    double  interest    = fixedInterestRate(savings);
     ui->spinInterest->setValue(interest);
     QString status      = ui->comboStatus->currentText().isEmpty()
                          ? computeStatus(savings)
@@ -382,6 +350,7 @@ void MainWindow::on_btnAdd_clicked()
         selectAccountInTable(editedIndex);
         setFormMode(true);
         setRightRailVisible(true);
+        showProjectionView(editedIndex);
         showLoader();
         appendAdminLog("Account updated: " + holder.name);
 
@@ -397,6 +366,7 @@ void MainWindow::on_btnAdd_clicked()
     updateInvestmentChart();
     showLoader();
     clearForm();
+    showAccountsView();
     appendAdminLog("Account created: " + holder.name);
 
     QMessageBox::information(this, "Success", "Account holder added successfully.");
@@ -434,6 +404,7 @@ void MainWindow::on_btnDelete_clicked()
         updateInvestmentChart();
         showLoader();
         clearForm();
+        showAccountsView();
     } else if (confirm.clickedButton() == deleteButton) {
         accounts.removeAt(accountIndex);
         populateTable();
@@ -442,6 +413,7 @@ void MainWindow::on_btnDelete_clicked()
         updateInvestmentChart();
         showLoader();
         clearForm();
+        showAccountsView();
     }
 }
 
@@ -475,13 +447,10 @@ void MainWindow::on_tableWidget_cellClicked(int row, int column)
     ui->comboAccountType->setCurrentText(h.accountType);
     ui->comboStatus->setCurrentText(h.status);
     ui->inputSavings->setValue(h.savings);
-    ui->inputInvestments->setValue(h.investments);
-    ui->spinMonths->setValue(h.monthsInvested);
-    ui->spinInterest->setValue(calculatedInterestRate(h.accountType, h.monthsInvested,
-                                                      h.savings, h.investments));
+    ui->spinInterest->setValue(fixedInterestRate(h.savings));
     setFormMode(true);
     setRightRailVisible(true);
-    updateInvestmentChart();
+    showProjectionView(accountIndex);
     scrollRightRailTo(ui->formPanel);
     appendAdminLog("Editing account: " + h.name);
 }
@@ -538,12 +507,13 @@ void MainWindow::on_btnDashboard_clicked()
 {
     setActiveNav(ui->btnDashboard);
     ui->screenTitle->setText("Banking Tracker Dashboard");
-    ui->screenSubtitle->setText("Monitor account savings, investments, status, and administrative activity.");
+    ui->screenSubtitle->setText("Monitor account savings, account status, and administrative activity.");
     ui->searchBar->clear();
     ui->categoryFilter->setCurrentText("All");
     ui->sortCombo->setCurrentIndex(0);
     ui->tableWidget->setFocus();
     setRightRailVisible(false);
+    showAccountsView();
     appendAdminLog("Dashboard opened");
 }
 
@@ -578,6 +548,7 @@ void MainWindow::on_btnCreateMenu_clicked()
     ui->screenSubtitle->setText("Enter customer identity and financial information.");
     clearForm();
     setRightRailVisible(true);
+    showAccountsView();
     scrollRightRailTo(ui->formPanel);
     ui->inputName->setFocus();
     appendAdminLog("Create account form opened");
@@ -587,34 +558,23 @@ void MainWindow::on_btnCreateMenu_clicked()
 void MainWindow::on_btnTransactionsMenu_clicked()
 {
     setActiveNav(ui->btnTransactionsMenu);
-    ui->screenTitle->setText("Transaction History");
-    ui->screenSubtitle->setText("Recent activity is shown in the admin log panel until full history storage is added.");
-    setRightRailVisible(true);
-    scrollRightRailTo(ui->miniPanel);
-    appendAdminLog("Transaction history panel opened");
+    showAdminLogsView();
+    appendAdminLog("Transaction history merged into admin logs");
 }
 
 
 void MainWindow::on_btnReportsMenu_clicked()
 {
     setActiveNav(ui->btnReportsMenu);
-    ui->screenTitle->setText("Summary Reports");
-    ui->screenSubtitle->setText("Savings, investment, and status summaries are visible in the dashboard cards.");
-    setRightRailVisible(true);
-    updateInvestmentChart();
-    scrollRightRailTo(ui->chartPanel);
-    appendAdminLog("Summary report preview opened");
+    showAccountsView();
+    appendAdminLog("Summary reports removed; dashboard opened");
 }
 
 
 void MainWindow::on_btnAdminLogsMenu_clicked()
 {
     setActiveNav(ui->btnAdminLogsMenu);
-    ui->screenTitle->setText("Admin Logs");
-    ui->screenSubtitle->setText("Administrative actions and system placeholders are listed in the log panel.");
-    setRightRailVisible(true);
-    scrollRightRailTo(ui->miniPanel);
-    ui->adminLogsList->setFocus();
+    showAdminLogsView();
     appendAdminLog("Admin logs opened");
 }
 
@@ -622,8 +582,8 @@ void MainWindow::on_btnAdminLogsMenu_clicked()
 void MainWindow::on_btnChangePassword_clicked()
 {
     setActiveNav(ui->btnAdminLogsMenu);
-    setRightRailVisible(true);
     if (changeAdminPassword()) {
+        showAdminLogsView();
         appendAdminLog("Admin password changed");
         QMessageBox::information(this, "Password Updated",
                                  "The admin password was updated successfully.");
@@ -643,7 +603,7 @@ void MainWindow::applyFilters()
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// updateSummaryCards — recomputes total accounts, savings, and investments
+// updateSummaryCards — recomputes total accounts, savings, and average interest
 // Owner: Reindel
 // ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::updateSummaryCards()
@@ -651,11 +611,11 @@ void MainWindow::updateSummaryCards()
     int    totalAccounts    = accounts.size();
     int    activeAccounts   = 0;
     double totalSavings     = 0.0;
-    double totalInvestments = 0.0;
+    double interestTotal    = 0.0;
 
     for (const AccountHolder &h : accounts) {
         totalSavings     += h.savings;
-        totalInvestments += h.investments;
+        interestTotal    += fixedInterestRate(h.savings);
         if (h.status == "Active") {
             activeAccounts++;
         }
@@ -663,7 +623,9 @@ void MainWindow::updateSummaryCards()
 
     ui->lblTotalAccounts->setText(QString::number(totalAccounts));
     ui->lblTotalSavings->setText(formatCurrency(totalSavings));
-    ui->lblTotalInvestments->setText(formatCurrency(totalInvestments));
+    ui->lblTotalInvestments->setText(accounts.isEmpty()
+                                         ? "0.00%"
+                                         : QString::number(interestTotal / accounts.size(), 'f', 2) + "%");
     ui->lblActiveAccounts->setText(QString::number(activeAccounts));
 }
 
@@ -708,11 +670,8 @@ void MainWindow::populateTable()
                   if (sortMode == "Username") {
                       return QString::localeAwareCompare(a.userName, b.userName) < 0;
                   }
-                  if (sortMode == "Investments: High to Low") {
-                      return a.investments > b.investments;
-                  }
-                  if (sortMode == "Account Age") {
-                      return a.monthsInvested > b.monthsInvested;
+                  if (sortMode == "Status") {
+                      return QString::localeAwareCompare(a.status, b.status) < 0;
                   }
                   return left > right;
               });
@@ -731,10 +690,7 @@ void MainWindow::populateTable()
             h.userName,
             h.accountType,
             formatCurrency(h.savings),
-            formatCurrency(h.investments),
-            formatAccountAge(h.monthsInvested),
-            QString::number(calculatedInterestRate(h.accountType, h.monthsInvested,
-                                                   h.savings, h.investments), 'f', 2) + "%",
+            QString::number(fixedInterestRate(h.savings), 'f', 2) + "%",
             h.status
         };
 
@@ -742,9 +698,9 @@ void MainWindow::populateTable()
             QTableWidgetItem *item = new QTableWidgetItem(values[col]);
             item->setData(Qt::UserRole, accountIndex);
             item->setToolTip(values[col]);
-            if (col >= 4 && col <= 7) {
+            if (col >= 4 && col <= 5) {
                 item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-            } else if (col == 8) {
+            } else if (col == 6) {
                 item->setTextAlignment(Qt::AlignCenter);
             } else {
                 item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -768,7 +724,7 @@ void MainWindow::populateTable()
 // ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::setRowColor(int row)
 {
-    QTableWidgetItem *statusItem = ui->tableWidget->item(row, 8);
+    QTableWidgetItem *statusItem = ui->tableWidget->item(row, 6);
     if (!statusItem) return;
 
     const QString status = statusItem->text();
@@ -809,8 +765,6 @@ void MainWindow::clearForm()
     ui->comboAccountType->setCurrentIndex(0);
     ui->comboStatus->setCurrentIndex(0);
     ui->inputSavings->setValue(0.0);
-    ui->inputInvestments->setValue(0.0);
-    ui->spinMonths->setValue(0);
     updateAutomatedInterest();
     ui->tableWidget->clearSelection();
     setFormMode(false);
@@ -848,6 +802,7 @@ void MainWindow::applyTheme(bool darkMode)
     if (!darkMode) {
         ui->themeToggle->setText("Light Mode");
         setStyleSheet(lightThemeStyle);
+        applyComboPopupTheme(false);
         return;
     }
 
@@ -866,6 +821,8 @@ QFrame#tablePanel,
 QFrame#formPanel,
 QFrame#chartPanel,
 QFrame#miniPanel,
+QFrame#projectionPanel,
+QFrame#mainLogsPanel,
 QFrame#summaryCard1,
 QFrame#summaryCard2,
 QFrame#summaryCard3,
@@ -892,7 +849,8 @@ QLabel#mutedLabel6,
 QLabel#mutedLabel7,
 QLabel#mutedLabel8,
 QLabel#mutedLabel9,
-QLabel#mutedLabel10 {
+QLabel#mutedLabel10,
+QLabel#projectionSubtitle {
     color: #9AAAB8;
 }
 
@@ -903,7 +861,8 @@ QLabel#cardTitle4,
 QLabel#panelTitle1,
 QLabel#panelTitle2,
 QLabel#panelTitle3,
-QLabel#panelTitle4 {
+QLabel#panelTitle4,
+QLabel#projectionTitle {
     color: #D7E3EA;
 }
 
@@ -939,6 +898,16 @@ QTableWidget {
     selection-color: #E6EDF3;
 }
 
+QComboBox QAbstractItemView,
+QAbstractItemView {
+    background: #162330;
+    border: 1px solid #34495A;
+    color: #E6EDF3;
+    selection-background-color: #2E6FBF;
+    selection-color: #FFFFFF;
+    outline: 0;
+}
+
 QHeaderView::section {
     background: #203040;
     border-right: 1px solid #304253;
@@ -950,6 +919,23 @@ QListWidget {
     color: #CAD6E0;
 }
 )");
+    applyComboPopupTheme(true);
+}
+
+void MainWindow::applyComboPopupTheme(bool darkMode)
+{
+    const QString popupStyle = darkMode
+        ? "QAbstractItemView { background: #162330; color: #E6EDF3; "
+          "selection-background-color: #2E6FBF; selection-color: #FFFFFF; "
+          "border: 1px solid #34495A; outline: 0; }"
+        : "QAbstractItemView { background: #FFFFFF; color: #162033; "
+          "selection-background-color: #E8F0FE; selection-color: #162033; "
+          "border: 1px solid #CAD5E2; outline: 0; }";
+
+    const QList<QComboBox *> combos = findChildren<QComboBox *>();
+    for (QComboBox *combo : combos) {
+        combo->view()->setStyleSheet(popupStyle);
+    }
 }
 
 
@@ -963,8 +949,6 @@ void MainWindow::setActiveNav(QPushButton *activeButton)
     QList<QPushButton *> navButtons = {
         ui->btnDashboard,
         ui->btnCreateMenu,
-        ui->btnTransactionsMenu,
-        ui->btnReportsMenu,
         ui->btnAdminLogsMenu
     };
 
@@ -985,7 +969,11 @@ void MainWindow::setActiveNav(QPushButton *activeButton)
 void MainWindow::appendAdminLog(const QString &message)
 {
     const QString time = QDateTime::currentDateTime().toString("hh:mm AP");
-    ui->adminLogsList->insertItem(0, QString("%1  %2").arg(time, message));
+    const QString line = QString("%1  %2").arg(time, message);
+    ui->adminLogsList->insertItem(0, line);
+    if (mainAdminLogsList) {
+        mainAdminLogsList->insertItem(0, line);
+    }
 }
 
 
@@ -1054,11 +1042,12 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 
         if (editingAccountIndex >= 0 && ui->formPanel->isVisible()) {
             const bool popupClick = clicked && clicked->window()
-                                    && clicked->window()->windowFlags().testFlag(Qt::Popup);
+            && clicked->window()->windowFlags().testFlag(Qt::Popup);
             const bool tableClick = isInsideWidget(clicked, ui->tableWidget);
             const bool formClick = isInsideWidget(clicked, ui->formPanel);
+            const bool projectionClick = isInsideWidget(clicked, projectionPanel);
 
-            if (!popupClick && !tableClick && !formClick) {
+            if (!popupClick && !tableClick && !formClick && !projectionClick) {
                 collapseEditPanel();
             }
         }
@@ -1071,6 +1060,8 @@ void MainWindow::setupModernUi()
 {
     ui->btnTransferMenu->hide();
     ui->btnSavingsMenu->hide();
+    ui->btnTransactionsMenu->hide();
+    ui->btnReportsMenu->hide();
     ui->themeToggle->setText("Light Mode");
     ui->brandMark->setStyleSheet("background: #2E6FBF; border-radius: 8px; color: #FFFFFF; "
                                  "font-size: 18px; font-weight: 900;");
@@ -1079,10 +1070,10 @@ void MainWindow::setupModernUi()
     ui->securityPanel->setStyleSheet("");
     ui->btnChangePassword->setStyleSheet("");
 
-    sidebarToggleButton = new QPushButton("<", ui->sidebar);
+    sidebarToggleButton = new QPushButton(QString::fromUtf8("\xE2\x98\xB0"), ui->sidebar);
     sidebarToggleButton->setObjectName("btnSidebarToggle");
     sidebarToggleButton->setFixedSize(34, 34);
-    sidebarToggleButton->setToolTip("Collapse navigation");
+    sidebarToggleButton->setToolTip("Toggle navigation");
     sidebarToggleButton->setCursor(Qt::PointingHandCursor);
     ui->brandLayout->addWidget(sidebarToggleButton);
     connect(sidebarToggleButton, &QPushButton::clicked, this, &MainWindow::toggleSidebar);
@@ -1092,6 +1083,13 @@ void MainWindow::setupModernUi()
         button->setCursor(Qt::PointingHandCursor);
     }
 
+    exitButton = new QPushButton("Exit", ui->sidebar);
+    exitButton->setObjectName("btnExitProgram");
+    exitButton->setCursor(Qt::PointingHandCursor);
+    exitButton->setToolTip("Exit program");
+    ui->sidebarLayout->insertWidget(ui->sidebarLayout->count() - 1, exitButton);
+    connect(exitButton, &QPushButton::clicked, this, &MainWindow::exitProgram);
+
     loadingBar = new QProgressBar(ui->contentArea);
     loadingBar->setObjectName("loadingBar");
     loadingBar->setRange(0, 0);
@@ -1100,17 +1098,20 @@ void MainWindow::setupModernUi()
     loadingBar->hide();
     ui->contentLayout->insertWidget(1, loadingBar);
 
-    ui->panelTitle3->setText("Compound Growth");
-    ui->mutedLabel7->setText("Projected value over the selected term.");
+    ui->cardTitle3->setText("Average Interest");
+    ui->mutedLabel3->setText("Fixed by savings balance");
+    ui->mutedLabel4->setText("Not suspended/inactive");
+
+    ui->panelTitle3->setText("Forecast");
+    ui->mutedLabel7->setText("Open an account to view the large projection.");
+    ui->chartPanel->hide();
+    ui->miniPanel->hide();
     ui->chartPanel->setMinimumHeight(250);
     ui->chartPanel->setMaximumHeight(300);
     ui->bar1->hide();
     ui->bar2->hide();
     ui->bar3->hide();
     ui->bar4->hide();
-
-    investmentChart = new CompoundInterestChart(ui->chartPanel);
-    ui->analyticsBarLayout->addWidget(investmentChart);
 }
 
 void MainWindow::setRightRailVisible(bool visible)
@@ -1118,6 +1119,143 @@ void MainWindow::setRightRailVisible(bool visible)
     ui->rightRailScroll->setVisible(visible);
     ui->mainWorkspaceLayout->setStretch(0, visible ? 1 : 2);
     ui->mainWorkspaceLayout->setStretch(1, visible ? 0 : 0);
+}
+
+void MainWindow::setupMainViews()
+{
+    projectionPanel = new QFrame(ui->tablePanel);
+    projectionPanel->setObjectName("projectionPanel");
+    auto *projectionLayout = new QVBoxLayout(projectionPanel);
+    projectionLayout->setContentsMargins(18, 18, 18, 18);
+    projectionLayout->setSpacing(14);
+
+    auto *projectionHeader = new QHBoxLayout();
+    auto *projectionText = new QVBoxLayout();
+    projectionTitle = new QLabel("Savings Forecast", projectionPanel);
+    projectionTitle->setObjectName("projectionTitle");
+    projectionTitle->setStyleSheet("font-size: 20px; font-weight: 800;");
+    projectionSubtitle = new QLabel("Select an account to view capital, projected value, and interest.", projectionPanel);
+    projectionSubtitle->setObjectName("projectionSubtitle");
+    projectionText->addWidget(projectionTitle);
+    projectionText->addWidget(projectionSubtitle);
+    projectionHeader->addLayout(projectionText, 1);
+    backToAccountsButton = new QPushButton("Back to Accounts", projectionPanel);
+    backToAccountsButton->setCursor(Qt::PointingHandCursor);
+    projectionHeader->addWidget(backToAccountsButton);
+    connect(backToAccountsButton, &QPushButton::clicked, this, &MainWindow::showAccountsView);
+    projectionLayout->addLayout(projectionHeader);
+
+    investmentChart = new CompoundInterestChart(projectionPanel);
+    projectionLayout->addWidget(investmentChart, 1);
+
+    projectionTable = new QTableWidget(projectionPanel);
+    projectionTable->setColumnCount(4);
+    projectionTable->setHorizontalHeaderLabels({"Term", "Capital", "Projected", "Interest"});
+    projectionTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    projectionTable->setSelectionMode(QAbstractItemView::NoSelection);
+    projectionTable->verticalHeader()->setVisible(false);
+    projectionTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    projectionTable->setMinimumHeight(180);
+    projectionLayout->addWidget(projectionTable);
+    ui->tablePanelLayout->addWidget(projectionPanel);
+
+    mainLogsPanel = new QFrame(ui->tablePanel);
+    mainLogsPanel->setObjectName("mainLogsPanel");
+    auto *logsLayout = new QVBoxLayout(mainLogsPanel);
+    logsLayout->setContentsMargins(18, 18, 18, 18);
+    logsLayout->setSpacing(12);
+    auto *logsTitle = new QLabel("Admin Logs", mainLogsPanel);
+    logsTitle->setObjectName("projectionTitle");
+    logsTitle->setStyleSheet("font-size: 20px; font-weight: 800;");
+    auto *logsSubtitle = new QLabel("All admin actions and file-system activity appear here.", mainLogsPanel);
+    logsSubtitle->setObjectName("projectionSubtitle");
+    mainAdminLogsList = new QListWidget(mainLogsPanel);
+    mainAdminLogsList->setMinimumHeight(420);
+    logsLayout->addWidget(logsTitle);
+    logsLayout->addWidget(logsSubtitle);
+    logsLayout->addWidget(mainAdminLogsList, 1);
+    for (int i = 0; i < ui->adminLogsList->count(); ++i) {
+        mainAdminLogsList->addItem(ui->adminLogsList->item(i)->text());
+    }
+    ui->tablePanelLayout->addWidget(mainLogsPanel);
+}
+
+void MainWindow::showAccountsView()
+{
+    ui->panelTitle1->setText("Account Directory");
+    ui->mutedLabel5->setText("Search, filter, sort, create, deactivate, or review records.");
+    ui->tableWidget->show();
+    if (projectionPanel) {
+        projectionPanel->hide();
+    }
+    if (mainLogsPanel) {
+        mainLogsPanel->hide();
+    }
+}
+
+void MainWindow::showProjectionView(int accountIndex)
+{
+    if (accountIndex < 0 || accountIndex >= accounts.size()) {
+        return;
+    }
+
+    setActiveNav(ui->btnDashboard);
+    ui->screenTitle->setText("Account Forecast");
+    ui->screenSubtitle->setText("Fixed-rate savings projection for the selected account.");
+    ui->panelTitle1->setText("Savings Forecast");
+    ui->mutedLabel5->setText("Capital, projected value, and interest over 5, 10, 20, and 40 years.");
+    ui->tableWidget->hide();
+    if (mainLogsPanel) {
+        mainLogsPanel->hide();
+    }
+    if (projectionPanel) {
+        projectionPanel->show();
+    }
+
+    const AccountHolder &holder = accounts[accountIndex];
+    const double rate = fixedInterestRate(holder.savings);
+    projectionTitle->setText(holder.name + " Forecast");
+    projectionSubtitle->setText(QString("%1 savings at %2% fixed annual interest")
+                                    .arg(formatCurrency(holder.savings),
+                                         QString::number(rate, 'f', 2)));
+    projectionTable->setRowCount(0);
+    const QVector<int> years = {5, 10, 20, 40};
+    for (int row = 0; row < years.size(); ++row) {
+        const int year = years[row];
+        const double projected = projectedValue(holder.savings, rate, year);
+        const double interest = projected - holder.savings;
+        projectionTable->insertRow(row);
+        const QStringList values = {
+            QString::number(year) + " years",
+            formatCurrency(holder.savings),
+            formatCurrency(projected),
+            formatCurrency(interest)
+        };
+        for (int col = 0; col < values.size(); ++col) {
+            auto *item = new QTableWidgetItem(values[col]);
+            item->setTextAlignment(col == 0 ? Qt::AlignLeft | Qt::AlignVCenter
+                                            : Qt::AlignRight | Qt::AlignVCenter);
+            projectionTable->setItem(row, col, item);
+        }
+    }
+    updateInvestmentChart();
+}
+
+void MainWindow::showAdminLogsView()
+{
+    ui->screenTitle->setText("Admin Logs");
+    ui->screenSubtitle->setText("Central log view for admin actions and saved-file activity.");
+    ui->panelTitle1->setText("Admin Logs");
+    ui->mutedLabel5->setText("Newest activity appears first.");
+    setRightRailVisible(false);
+    ui->tableWidget->hide();
+    if (projectionPanel) {
+        projectionPanel->hide();
+    }
+    if (mainLogsPanel) {
+        mainLogsPanel->show();
+        mainAdminLogsList->setFocus();
+    }
 }
 
 void MainWindow::collapseEditPanel()
@@ -1151,7 +1289,7 @@ void MainWindow::toggleSidebar()
     ui->brandName->setVisible(!sidebarCollapsed);
     ui->brandSubtitle->setVisible(!sidebarCollapsed);
     ui->securityPanel->setVisible(!sidebarCollapsed);
-    sidebarToggleButton->setText(sidebarCollapsed ? ">" : "<");
+    sidebarToggleButton->setText(QString::fromUtf8("\xE2\x98\xB0"));
     sidebarToggleButton->setToolTip(sidebarCollapsed ? "Expand navigation"
                                                      : "Collapse navigation");
 
@@ -1163,20 +1301,32 @@ void MainWindow::toggleSidebar()
     const QList<QPair<QPushButton *, QString>> labels = {
         {ui->btnDashboard, "Dashboard"},
         {ui->btnCreateMenu, "Create Account"},
-        {ui->btnTransactionsMenu, "Transaction History"},
-        {ui->btnReportsMenu, "Summary Reports"},
-        {ui->btnAdminLogsMenu, "Admin Logs"}
+        {ui->btnAdminLogsMenu, "Admin Logs"},
+        {exitButton, "Exit"}
     };
 
     for (const auto &entry : labels) {
         QPushButton *button = entry.first;
+        if (!button) {
+            continue;
+        }
         const QString &label = entry.second;
         button->setToolTip(label);
-        button->setText(sidebarCollapsed ? label.left(1) : label);
+        const QString collapsedLabel = label == "Create Account" ? "+"
+                                      : label == "Admin Logs" ? "Logs"
+                                      : label == "Exit" ? "Exit"
+                                                        : "Home";
+        button->setText(sidebarCollapsed ? collapsedLabel : label);
         button->setProperty("collapsed", sidebarCollapsed);
         button->style()->unpolish(button);
         button->style()->polish(button);
     }
+}
+
+void MainWindow::exitProgram()
+{
+    appendAdminLog("Exit requested");
+    close();
 }
 
 void MainWindow::showLoader()
@@ -1223,10 +1373,7 @@ void MainWindow::loadAccounts()
         holder.savings = object.value("savings").toDouble();
         holder.investments = object.value("investments").toDouble();
         holder.monthsInvested = object.value("monthsInvested").toInt();
-        holder.interestRate = calculatedInterestRate(holder.accountType,
-                                                     holder.monthsInvested,
-                                                     holder.savings,
-                                                     holder.investments);
+        holder.interestRate = fixedInterestRate(holder.savings);
         holder.status = object.value("status").toString(computeStatus(holder.savings));
 
         if (!holder.name.isEmpty() && !holder.cardNumber.isEmpty()) {
@@ -1341,7 +1488,9 @@ QFrame#panel,
 QFrame#tablePanel,
 QFrame#formPanel,
 QFrame#chartPanel,
-QFrame#miniPanel {
+QFrame#miniPanel,
+QFrame#projectionPanel,
+QFrame#mainLogsPanel {
     background: #FFFFFF;
     border: 1px solid #DCE3EC;
     border-radius: 8px;
@@ -1385,7 +1534,8 @@ QLabel#cardTitle4,
 QLabel#panelTitle1,
 QLabel#panelTitle2,
 QLabel#panelTitle3,
-QLabel#panelTitle4 {
+QLabel#panelTitle4,
+QLabel#projectionTitle {
     color: #2D3A4D;
     font-size: 13px;
     font-weight: 750;
@@ -1587,60 +1737,34 @@ QString MainWindow::formatCurrency(double value) const
     return PesoSymbol + QLocale(QLocale::English).toString(value, 'f', 2);
 }
 
-QString MainWindow::formatAccountAge(int months) const
+double MainWindow::fixedInterestRate(double savings) const
 {
-    if (months <= 12) {
-        return pluralize(std::max(0, months), "Month", "Months");
+    if (savings >= 1000000.0) {
+        return 5.00;
     }
-
-    const int years = months / 12;
-    const int remainingMonths = months % 12;
-    QStringList parts;
-    parts << pluralize(years, "Year", "Years");
-    if (remainingMonths > 0) {
-        parts << pluralize(remainingMonths, "Month", "Months");
+    if (savings >= 250000.0) {
+        return 4.25;
     }
-    return parts.join(", ");
+    if (savings >= 50000.0) {
+        return 3.50;
+    }
+    if (savings > 0.0) {
+        return 2.25;
+    }
+    return 0.0;
 }
 
-double MainWindow::calculatedInterestRate(const QString &accountType,
-                                          int months,
-                                          double savings,
-                                          double investments) const
+double MainWindow::projectedValue(double principal, double annualRatePercent, int years) const
 {
-    double baseRate = 1.25;
-    if (accountType == "Stocks") {
-        baseRate = 8.00;
-    } else if (accountType == "Time Deposit") {
-        baseRate = 4.25;
-    } else if (accountType == "UITF") {
-        baseRate = 5.50;
+    if (principal <= 0.0 || years <= 0) {
+        return principal;
     }
-
-    if (months >= 60) {
-        baseRate += 0.75;
-    } else if (months >= 24) {
-        baseRate += 0.40;
-    } else if (months >= 12) {
-        baseRate += 0.25;
-    }
-
-    const double balance = savings + investments;
-    if (balance >= 1000000.0) {
-        baseRate += 0.35;
-    } else if (balance >= 100000.0) {
-        baseRate += 0.15;
-    }
-
-    return std::min(baseRate, 12.0);
+    return principal * std::pow(1.0 + (annualRatePercent / 100.0), years);
 }
 
 void MainWindow::updateAutomatedInterest()
 {
-    const double rate = calculatedInterestRate(ui->comboAccountType->currentText(),
-                                               ui->spinMonths->value(),
-                                               ui->inputSavings->value(),
-                                               ui->inputInvestments->value());
+    const double rate = fixedInterestRate(ui->inputSavings->value());
     ui->spinInterest->blockSignals(true);
     ui->spinInterest->setValue(rate);
     ui->spinInterest->blockSignals(false);
@@ -1654,52 +1778,36 @@ void MainWindow::updateInvestmentChart()
 
     double principal = 0.0;
     double weightedRate = 0.0;
-    int months = 0;
 
     if (editingAccountIndex >= 0 && editingAccountIndex < accounts.size()) {
         const AccountHolder &holder = accounts[editingAccountIndex];
-        principal = holder.investments > 0.0 ? holder.investments : holder.savings;
-        weightedRate = calculatedInterestRate(holder.accountType,
-                                              holder.monthsInvested,
-                                              holder.savings,
-                                              holder.investments);
-        months = holder.monthsInvested;
+        principal = holder.savings;
+        weightedRate = fixedInterestRate(holder.savings);
     } else if (ui->rightRailScroll->isVisible()) {
-        principal = ui->inputInvestments->value() > 0.0
-                        ? ui->inputInvestments->value()
-                        : ui->inputSavings->value();
+        principal = ui->inputSavings->value();
         weightedRate = ui->spinInterest->value();
-        months = ui->spinMonths->value();
     }
 
-    if (principal <= 0.0 || months <= 0) {
+    if (principal <= 0.0) {
         double portfolioPrincipal = 0.0;
         double rateSum = 0.0;
-        int longestTerm = 0;
 
         for (const AccountHolder &holder : accounts) {
-            const double accountPrincipal = holder.investments > 0.0
-                                                ? holder.investments
-                                                : holder.savings;
+            const double accountPrincipal = holder.savings;
             if (accountPrincipal <= 0.0) {
                 continue;
             }
 
-            const double rate = calculatedInterestRate(holder.accountType,
-                                                       holder.monthsInvested,
-                                                       holder.savings,
-                                                       holder.investments);
+            const double rate = fixedInterestRate(holder.savings);
             portfolioPrincipal += accountPrincipal;
             rateSum += accountPrincipal * rate;
-            longestTerm = std::max(longestTerm, holder.monthsInvested);
         }
 
         principal = portfolioPrincipal;
         weightedRate = portfolioPrincipal > 0.0 ? rateSum / portfolioPrincipal : 0.0;
-        months = longestTerm > 0 ? longestTerm : 12;
     }
 
-    investmentChart->setProjection(principal, weightedRate, months);
+    investmentChart->setProjection(principal, weightedRate);
 }
 
 void MainWindow::ensureAdminCredentials()
@@ -1751,7 +1859,7 @@ bool MainWindow::authenticateAdmin()
         auto *layout = new QVBoxLayout(&dialog);
         auto *title = new QLabel("Admin Login", &dialog);
         title->setObjectName("authTitle");
-        title->setStyleSheet("font-size: 20px; font-weight: 800; color: #162033;");
+        title->setStyleSheet("font-size: 20px; font-weight: 800; color: #E5E5E5;");
         auto *subtitle = new QLabel(settings.value("auth/firstRun", false).toBool()
                                         ? "First run: admin / admin123"
                                         : "Enter admin credentials", &dialog);

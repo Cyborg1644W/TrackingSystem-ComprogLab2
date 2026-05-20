@@ -425,6 +425,9 @@ QListWidget::item:selected {
        </item>
        <item>
         <widget class="QPushButton" name="btnTransactionsMenu">
+         <property name="visible">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>Transaction History</string>
          </property>
@@ -432,6 +435,9 @@ QListWidget::item:selected {
        </item>
        <item>
         <widget class="QPushButton" name="btnReportsMenu">
+         <property name="visible">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>Summary Reports</string>
          </property>
@@ -555,7 +561,7 @@ QListWidget::item:selected {
            <item>
             <widget class="QLabel" name="screenSubtitle">
              <property name="text">
-              <string>Monitor account savings, investments, status, and administrative activity.</string>
+              <string>Monitor account savings, account status, and administrative activity.</string>
              </property>
             </widget>
            </item>
@@ -735,7 +741,7 @@ QListWidget::item:selected {
             <item>
              <widget class="QLabel" name="cardTitle3">
               <property name="text">
-               <string>Investments</string>
+               <string>Average Interest</string>
               </property>
              </widget>
             </item>
@@ -749,7 +755,7 @@ QListWidget::item:selected {
             <item>
              <widget class="QLabel" name="mutedLabel3">
               <property name="text">
-               <string>UITF, stocks, and deposits</string>
+               <string>Fixed by savings balance</string>
               </property>
              </widget>
             </item>
@@ -867,6 +873,9 @@ QListWidget::item:selected {
               </item>
               <item>
                <widget class="QLabel" name="statusLegendActive">
+                <property name="visible">
+                 <bool>false</bool>
+                </property>
                 <property name="styleSheet">
                  <string notr="true">background: #DCEFEA; border-radius: 9px; color: #146352; font-size: 11px; font-weight: 800; padding: 5px 10px;</string>
                 </property>
@@ -877,6 +886,9 @@ QListWidget::item:selected {
               </item>
               <item>
                <widget class="QLabel" name="statusLegendInactive">
+                <property name="visible">
+                 <bool>false</bool>
+                </property>
                 <property name="styleSheet">
                  <string notr="true">background: #FFF0D9; border-radius: 9px; color: #A05A00; font-size: 11px; font-weight: 800; padding: 5px 10px;</string>
                 </property>
@@ -887,6 +899,9 @@ QListWidget::item:selected {
               </item>
               <item>
                <widget class="QLabel" name="statusLegendSuspended">
+                <property name="visible">
+                 <bool>false</bool>
+                </property>
                 <property name="styleSheet">
                  <string notr="true">background: #FFE4E4; border-radius: 9px; color: #B42318; font-size: 11px; font-weight: 800; padding: 5px 10px;</string>
                 </property>
@@ -943,16 +958,6 @@ QListWidget::item:selected {
               <column>
                <property name="text">
                 <string>Savings</string>
-               </property>
-              </column>
-              <column>
-               <property name="text">
-                <string>Investments</string>
-               </property>
-              </column>
-              <column>
-               <property name="text">
-                <string>Account Age</string>
                </property>
               </column>
               <column>
@@ -1106,6 +1111,9 @@ QListWidget::item:selected {
                 </item>
                 <item>
                  <widget class="QDoubleSpinBox" name="inputInvestments">
+                  <property name="visible">
+                   <bool>false</bool>
+                  </property>
                   <property name="maximum">
                    <double>999999999.000000000000000</double>
                   </property>
@@ -1123,6 +1131,9 @@ QListWidget::item:selected {
                 </property>
                 <item>
                  <widget class="QSpinBox" name="spinMonths">
+                  <property name="visible">
+                   <bool>false</bool>
+                  </property>
                   <property name="maximum">
                    <number>600</number>
                   </property>

@@ -8,18 +8,18 @@
 
 class CompoundInterestChart;
 class QEvent;
+class QLabel;
+class QListWidget;
 class QProgressBar;
 class QPushButton;
+class QTableWidget;
 class QWidget;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
-// ─────────────────────────────────────────────
-// AccountHolder struct — Reindel
-// Stores all 7 required fields per account holder
-// ─────────────────────────────────────────────
+
 struct AccountHolder {
     QString cardNumber;
     QString name;
@@ -68,19 +68,25 @@ private:
     int editingAccountIndex = -1;
     bool sidebarCollapsed = false;
     QPushButton *sidebarToggleButton = nullptr;
+    QPushButton *exitButton = nullptr;
+    QPushButton *backToAccountsButton = nullptr;
     QProgressBar *loadingBar = nullptr;
     CompoundInterestChart *investmentChart = nullptr;
+    QWidget *projectionPanel = nullptr;
+    QWidget *mainLogsPanel = nullptr;
+    QLabel *projectionTitle = nullptr;
+    QLabel *projectionSubtitle = nullptr;
+    QTableWidget *projectionTable = nullptr;
+    QListWidget *mainAdminLogsList = nullptr;
 
-    // ── Data (Reindel) ─────────────────────────
-    QVector<AccountHolder> accounts;  // Master list — no parallel arrays
+    QVector<AccountHolder> accounts;
 
-    // ── Helper functions ───────────────────────
-    void updateSummaryCards();        // Reindel — recompute totals after add/delete
-    void applyFilters();              // Reindel — apply search + category together
-    void populateTable();             // Reindel — rebuild table from QVector
-    void clearForm();                 // Keith   — reset all input fields
-    void setRowColor(int row);        // Aaron   — color-code status column
-    QString computeStatus(double savings); // Aaron — fallback account status
+    void updateSummaryCards();
+    void applyFilters();
+    void populateTable();
+    void clearForm();
+    void setRowColor(int row);
+    QString computeStatus(double savings);
     int accountIndexForRow(int row) const;
     void applyTheme(bool darkMode);
     void setActiveNav(QPushButton *activeButton);
@@ -92,19 +98,22 @@ private:
     void setRightRailVisible(bool visible);
     void collapseEditPanel();
     void toggleSidebar();
+    void exitProgram();
     void showLoader();
     void loadAccounts();
     void saveAccounts() const;
     QString dataFilePath() const;
     QString buildLightThemeStyle() const;
     QString formatCurrency(double value) const;
-    QString formatAccountAge(int months) const;
-    double calculatedInterestRate(const QString &accountType,
-                                  int months,
-                                  double savings,
-                                  double investments) const;
+    double fixedInterestRate(double savings) const;
+    double projectedValue(double principal, double annualRatePercent, int years) const;
     void updateAutomatedInterest();
     void updateInvestmentChart();
+    void setupMainViews();
+    void showAccountsView();
+    void showProjectionView(int accountIndex);
+    void showAdminLogsView();
+    void applyComboPopupTheme(bool darkMode);
     void ensureAdminCredentials();
     QByteArray adminPasswordHash(const QString &password, const QByteArray &salt) const;
     bool verifyAdminPassword(const QString &password) const;
