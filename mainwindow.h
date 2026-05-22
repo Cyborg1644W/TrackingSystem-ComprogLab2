@@ -103,6 +103,8 @@ private:
     void loadAccounts();
     void saveAccounts() const;
     QString dataFilePath() const;
+    QString logFilePath() const;
+    void loadLogs();
     QString buildLightThemeStyle() const;
     QString formatCurrency(double value) const;
     double fixedInterestRate(double savings) const;
@@ -120,4 +122,4 @@ private:
     bool changeAdminPassword();
 };
 
-#endif // MAINWINDOW_.
+#endif

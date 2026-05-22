@@ -45,6 +45,7 @@
 #include <QStyle>
 #include <QTableWidgetItem>
 #include <QTableWidget>
+#include <QTextStream>
 #include <QTimer>
 #include <QVariantAnimation>
 #include <QVBoxLayout>
@@ -136,9 +137,9 @@ protected:
             const QRectF bar(x, plot.bottom() - barHeight, barWidth, barHeight);
 
             QColor fill = i == 0 ? QColor("#8AB4F8")
-                         : i == 1 ? QColor("#2E6FBF")
-                         : i == 2 ? QColor("#1F8A70")
-                                  : QColor("#F2B84B");
+                          : i == 1 ? QColor("#2E6FBF")
+                          : i == 2 ? QColor("#1F8A70")
+                                   : QColor("#F2B84B");
             painter.setPen(Qt::NoPen);
             painter.setBrush(fill);
             painter.drawRoundedRect(bar, 8, 8);
@@ -173,9 +174,8 @@ private:
     double annualRate = 0.0;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // Constructor — wires all signals & slots, sets up table headers and filters
-// ─────────────────────────────────────────────────────────────────────────────
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -209,15 +209,13 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableWidget->setColumnWidth(5, 116);
     ui->tableWidget->setColumnWidth(6, 110);
 
-    // ── Category filter options (Aaron) ───────────────────────────────────
-    ui->categoryFilter->addItems({"All", "Savings", "Stocks", "Time Deposit", "UITF"});
+    ui->categoryFilter->addItems({"All", "Savings"});
     ui->categoryFilter->setInsertPolicy(QComboBox::NoInsert);
     ui->categoryFilter->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     ui->categoryFilter->view()->setMinimumWidth(180);
     ui->categoryFilter->setMaxVisibleItems(8);
 
-    // ── Account type combo (Aaron) ─────────────────────────────────────────
-    ui->comboAccountType->addItems({"Savings", "Stocks", "Time Deposit", "UITF"});
+    ui->comboAccountType->addItems({"Savings"});
     ui->comboStatus->addItems({"Active", "Inactive", "Suspended"});
     ui->sortCombo->addItems({"Sort: Latest", "Alphabetical", "Savings: High to Low",
                              "Username", "Status"});
@@ -271,10 +269,10 @@ MainWindow::MainWindow(QWidget *parent)
     setFormMode(false);
     setRightRailVisible(false);
     setupMainViews();
+    loadLogs();
     showAccountsView();
     qApp->installEventFilter(this);
 
-    // ── Initial summary cards (Reindel) ───────────────────────────────────
     loadAccounts();
     updateSummaryCards();
     populateTable();
@@ -290,10 +288,7 @@ MainWindow::~MainWindow()
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // on_btnAdd_clicked — creates a new account or saves the selected account edit
-// Owner: Keith
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::on_btnAdd_clicked()
 {
     // Read all fields
@@ -373,10 +368,7 @@ void MainWindow::on_btnAdd_clicked()
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // on_btnDelete_clicked — deactivates or deletes selected row from QVector
-// Owner: Keith
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::on_btnDelete_clicked()
 {
     int row = ui->tableWidget->currentRow();
@@ -398,6 +390,7 @@ void MainWindow::on_btnDelete_clicked()
 
     if (confirm.clickedButton() == deactivateButton) {
         accounts[accountIndex].status = "Inactive";
+        appendAdminLog("Account deactivated: " + accounts[accountIndex].name);
         populateTable();
         updateSummaryCards();
         saveAccounts();
@@ -406,7 +399,9 @@ void MainWindow::on_btnDelete_clicked()
         clearForm();
         showAccountsView();
     } else if (confirm.clickedButton() == deleteButton) {
+        const QString deletedName = accounts[accountIndex].name;
         accounts.removeAt(accountIndex);
+        appendAdminLog("Account deleted: " + deletedName);
         populateTable();
         updateSummaryCards();
         saveAccounts();
@@ -418,20 +413,14 @@ void MainWindow::on_btnDelete_clicked()
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // on_btnClear_clicked — resets all input form fields
-// Owner: Keith
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::on_btnClear_clicked()
 {
     clearForm();
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // on_tableWidget_cellClicked — fills all form fields from the selected row
-// Owner: Keith
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::on_tableWidget_cellClicked(int row, int column)
 {
     Q_UNUSED(column);
@@ -452,14 +441,10 @@ void MainWindow::on_tableWidget_cellClicked(int row, int column)
     setRightRailVisible(true);
     showProjectionView(accountIndex);
     scrollRightRailTo(ui->formPanel);
-    appendAdminLog("Editing account: " + h.name);
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // on_searchBar_textChanged — filters table rows by account holder name
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::on_searchBar_textChanged(const QString &text)
 {
     Q_UNUSED(text);
@@ -467,10 +452,8 @@ void MainWindow::on_searchBar_textChanged(const QString &text)
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // on_categoryFilter_currentIndexChanged — filters table rows by account type
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
+
 void MainWindow::on_categoryFilter_currentIndexChanged(int index)
 {
     Q_UNUSED(index);
@@ -478,10 +461,8 @@ void MainWindow::on_categoryFilter_currentIndexChanged(int index)
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // on_sortCombo_currentIndexChanged — rebuilds table with selected sort mode
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
+
 void MainWindow::on_sortCombo_currentIndexChanged(int index)
 {
     Q_UNUSED(index);
@@ -489,20 +470,15 @@ void MainWindow::on_sortCombo_currentIndexChanged(int index)
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // on_themeToggle_toggled — switches between light and dark dashboard themes
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::on_themeToggle_toggled(bool checked)
 {
     applyTheme(checked);
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Sidebar actions — lightweight navigation for the current single-window app
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
+
 void MainWindow::on_btnDashboard_clicked()
 {
     setActiveNav(ui->btnDashboard);
@@ -514,7 +490,6 @@ void MainWindow::on_btnDashboard_clicked()
     ui->tableWidget->setFocus();
     setRightRailVisible(false);
     showAccountsView();
-    appendAdminLog("Dashboard opened");
 }
 
 
@@ -525,7 +500,6 @@ void MainWindow::on_btnTransferMenu_clicked()
     ui->screenSubtitle->setText("Select an account record before recording transfer details.");
     ui->categoryFilter->setCurrentText("All");
     ui->tableWidget->setFocus();
-    appendAdminLog("Transfer workspace opened");
 }
 
 
@@ -537,7 +511,6 @@ void MainWindow::on_btnSavingsMenu_clicked()
     ui->categoryFilter->setCurrentText("Savings");
     applyFilters();
     ui->tableWidget->setFocus();
-    appendAdminLog("Savings filter applied");
 }
 
 
@@ -551,7 +524,6 @@ void MainWindow::on_btnCreateMenu_clicked()
     showAccountsView();
     scrollRightRailTo(ui->formPanel);
     ui->inputName->setFocus();
-    appendAdminLog("Create account form opened");
 }
 
 
@@ -559,7 +531,6 @@ void MainWindow::on_btnTransactionsMenu_clicked()
 {
     setActiveNav(ui->btnTransactionsMenu);
     showAdminLogsView();
-    appendAdminLog("Transaction history merged into admin logs");
 }
 
 
@@ -567,7 +538,6 @@ void MainWindow::on_btnReportsMenu_clicked()
 {
     setActiveNav(ui->btnReportsMenu);
     showAccountsView();
-    appendAdminLog("Summary reports removed; dashboard opened");
 }
 
 
@@ -575,7 +545,6 @@ void MainWindow::on_btnAdminLogsMenu_clicked()
 {
     setActiveNav(ui->btnAdminLogsMenu);
     showAdminLogsView();
-    appendAdminLog("Admin logs opened");
 }
 
 
@@ -591,10 +560,9 @@ void MainWindow::on_btnChangePassword_clicked()
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // applyFilters — applies search, category filter, and sort simultaneously
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
+
 void MainWindow::applyFilters()
 {
     populateTable();
@@ -602,10 +570,7 @@ void MainWindow::applyFilters()
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // updateSummaryCards — recomputes total accounts, savings, and average interest
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::updateSummaryCards()
 {
     int    totalAccounts    = accounts.size();
@@ -629,10 +594,7 @@ void MainWindow::updateSummaryCards()
     ui->lblActiveAccounts->setText(QString::number(activeAccounts));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // populateTable — rebuilds account table from the source QVector
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
 
 void MainWindow::populateTable()
 {
@@ -718,10 +680,7 @@ void MainWindow::populateTable()
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // setRowColor — applies color coding to the account status cell
-// Owner: Aaron
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::setRowColor(int row)
 {
     QTableWidgetItem *statusItem = ui->tableWidget->item(row, 6);
@@ -742,20 +701,14 @@ void MainWindow::setRowColor(int row)
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // computeStatus — returns a fallback status if the status combo has no value
-// Owner: Aaron
-// ─────────────────────────────────────────────────────────────────────────────
 QString MainWindow::computeStatus(double savings)
 {
     return savings > 0.0 ? "Active" : "Inactive";
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // clearForm — resets all input widgets to their default/empty state
-// Owner: Keith
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::clearForm()
 {
     editingAccountIndex = -1;
@@ -772,10 +725,7 @@ void MainWindow::clearForm()
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // accountIndexForRow — maps a visible/sorted table row back to the QVector index
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
 int MainWindow::accountIndexForRow(int row) const
 {
     if (row < 0) return -1;
@@ -793,10 +743,9 @@ int MainWindow::accountIndexForRow(int row) const
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// applyTheme — keeps the default light palette and overlays a dark palette
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
+
+// Theme - keeps the default light palette and overlays a dark palette
+
 void MainWindow::applyTheme(bool darkMode)
 {
     if (!darkMode) {
@@ -925,12 +874,12 @@ QListWidget {
 void MainWindow::applyComboPopupTheme(bool darkMode)
 {
     const QString popupStyle = darkMode
-        ? "QAbstractItemView { background: #162330; color: #E6EDF3; "
-          "selection-background-color: #2E6FBF; selection-color: #FFFFFF; "
-          "border: 1px solid #34495A; outline: 0; }"
-        : "QAbstractItemView { background: #FFFFFF; color: #162033; "
-          "selection-background-color: #E8F0FE; selection-color: #162033; "
-          "border: 1px solid #CAD5E2; outline: 0; }";
+                                   ? "QAbstractItemView { background: #162330; color: #E6EDF3; "
+                                     "selection-background-color: #2E6FBF; selection-color: #FFFFFF; "
+                                     "border: 1px solid #34495A; outline: 0; }"
+                                   : "QAbstractItemView { background: #FFFFFF; color: #162033; "
+                                     "selection-background-color: #E8F0FE; selection-color: #162033; "
+                                     "border: 1px solid #CAD5E2; outline: 0; }";
 
     const QList<QComboBox *> combos = findChildren<QComboBox *>();
     for (QComboBox *combo : combos) {
@@ -939,10 +888,7 @@ void MainWindow::applyComboPopupTheme(bool darkMode)
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // setActiveNav — updates sidebar active state for clickable menu items
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
 
 void MainWindow::setActiveNav(QPushButton *activeButton)
 {
@@ -962,25 +908,74 @@ void MainWindow::setActiveNav(QPushButton *activeButton)
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// appendAdminLog — records visible UI/navigation actions in the log panel
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
+// appendAdminLog
+
 void MainWindow::appendAdminLog(const QString &message)
 {
-    const QString time = QDateTime::currentDateTime().toString("hh:mm AP");
-    const QString line = QString("%1  %2").arg(time, message);
+    const QString timestamp   = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss AP");
+    const QString displayTime = QDateTime::currentDateTime().toString("hh:mm AP");
+    const QString line        = QString("%1  %2").arg(displayTime, message);
+
     ui->adminLogsList->insertItem(0, line);
     if (mainAdminLogsList) {
         mainAdminLogsList->insertItem(0, line);
     }
+
+    QFile logFile(logFilePath());
+    if (logFile.open(QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&logFile);
+        out << timestamp << "  " << message << "\n";
+    }
+}
+
+QString MainWindow::logFilePath() const
+{
+    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (appDataPath.isEmpty()) {
+        appDataPath = QDir::homePath() + "/BankTracker";
+    }
+    QDir().mkpath(appDataPath);
+    return appDataPath + "/admin_logs.txt";
+}
+
+void MainWindow::loadLogs()
+{
+    QFile logFile(logFilePath());
+    if (!logFile.exists() || !logFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return;
+    }
+
+    QStringList lines;
+    QTextStream in(&logFile);
+    while (!in.atEnd()) {
+        const QString raw = in.readLine().trimmed();
+        if (raw.isEmpty()) continue;
+
+        const int sep = raw.indexOf("  ");
+        QString displayLine;
+        if (sep >= 10) {
+            const QString fullTs   = raw.left(sep);
+            const QString msg      = raw.mid(sep + 2);
+            const QDateTime dt     = QDateTime::fromString(fullTs, "yyyy-MM-dd hh:mm:ss AP");
+            const QString timePart = dt.isValid() ? dt.toString("hh:mm AP") : fullTs;
+            displayLine = timePart + "  " + msg;
+        } else {
+            displayLine = raw;
+        }
+        lines.prepend(displayLine);
+    }
+
+    for (const QString &line : lines) {
+        ui->adminLogsList->addItem(line);
+        if (mainAdminLogsList) {
+            mainAdminLogsList->addItem(line);
+        }
+    }
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // scrollRightRailTo — brings right-side panels into view inside the scroll rail
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
+
 void MainWindow::scrollRightRailTo(QWidget *widget)
 {
     if (!widget) return;
@@ -989,10 +984,8 @@ void MainWindow::scrollRightRailTo(QWidget *widget)
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// setFormMode — labels the form clearly as create mode or edit mode
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
+// setFormMode - labels the form clearly as create mode or edit mode
+
 void MainWindow::setFormMode(bool editing)
 {
     ui->panelTitle2->setText(editing ? "Edit Account" : "Create Account");
@@ -1174,9 +1167,6 @@ void MainWindow::setupMainViews()
     logsLayout->addWidget(logsTitle);
     logsLayout->addWidget(logsSubtitle);
     logsLayout->addWidget(mainAdminLogsList, 1);
-    for (int i = 0; i < ui->adminLogsList->count(); ++i) {
-        mainAdminLogsList->addItem(ui->adminLogsList->item(i)->text());
-    }
     ui->tablePanelLayout->addWidget(mainLogsPanel);
 }
 
@@ -1266,7 +1256,6 @@ void MainWindow::collapseEditPanel()
 
     clearForm();
     setRightRailVisible(false);
-    appendAdminLog("Edit panel minimized");
 }
 
 void MainWindow::toggleSidebar()
@@ -1313,9 +1302,9 @@ void MainWindow::toggleSidebar()
         const QString &label = entry.second;
         button->setToolTip(label);
         const QString collapsedLabel = label == "Create Account" ? "+"
-                                      : label == "Admin Logs" ? "Logs"
-                                      : label == "Exit" ? "Exit"
-                                                        : "Home";
+                                       : label == "Admin Logs" ? "Logs"
+                                       : label == "Exit" ? "Exit"
+                                                                 : "Home";
         button->setText(sidebarCollapsed ? collapsedLabel : label);
         button->setProperty("collapsed", sidebarCollapsed);
         button->style()->unpolish(button);
@@ -1325,7 +1314,6 @@ void MainWindow::toggleSidebar()
 
 void MainWindow::exitProgram()
 {
-    appendAdminLog("Exit requested");
     close();
 }
 
@@ -1381,7 +1369,6 @@ void MainWindow::loadAccounts()
         }
     }
 
-    appendAdminLog(QString("Loaded %1 saved accounts").arg(accounts.size()));
 }
 
 void MainWindow::saveAccounts() const
