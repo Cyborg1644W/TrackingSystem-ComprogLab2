@@ -960,11 +960,7 @@ void MainWindow::setFormMode(bool editing)
     ui->btnAdd->setText(editing ? "Save Changes" : "Create Account");
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
 // selectAccountInTable — restores table selection after rebuilding filtered rows
-// Owner: Reindel
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::selectAccountInTable(int accountIndex)
 {
     for (int row = 0; row < ui->tableWidget->rowCount(); ++row) {
