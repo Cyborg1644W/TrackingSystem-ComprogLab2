@@ -24,10 +24,8 @@ struct AccountHolder {
     QString cardNumber;
     QString name;
     QString userName;
-    QString accountType;   // "Savings" | "Time Deposit" | "Stocks"
+    QString accountType;
     double  savings;
-    double  investments;
-    int     monthsInvested;
     double  interestRate;
     QString status;        // "Active" | "Inactive" | "Suspended"
 };
@@ -54,11 +52,7 @@ private slots:
     void on_themeToggle_toggled(bool checked);
     void on_tableWidget_cellClicked(int row, int column);
     void on_btnDashboard_clicked();
-    void on_btnTransferMenu_clicked();
-    void on_btnSavingsMenu_clicked();
     void on_btnCreateMenu_clicked();
-    void on_btnTransactionsMenu_clicked();
-    void on_btnReportsMenu_clicked();
     void on_btnAdminLogsMenu_clicked();
     void on_btnChangePassword_clicked();
 

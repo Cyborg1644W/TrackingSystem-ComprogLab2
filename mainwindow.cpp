@@ -46,6 +46,7 @@
 #include <QTableWidgetItem>
 #include <QTableWidget>
 #include <QTextStream>
+#include <QTextStream>
 #include <QTimer>
 #include <QVariantAnimation>
 #include <QVBoxLayout>
@@ -158,6 +159,7 @@ protected:
         }
     }
 
+
 private:
     QString compactCurrency(double value) const
     {
@@ -242,6 +244,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->spinInterest->setToolTip("Calculated automatically from account savings.");
     ui->inputInvestments->hide();
     ui->spinMonths->hide();
+    ui->comboAccountType->hide();
     ui->statusLegendActive->hide();
     ui->statusLegendInactive->hide();
     ui->statusLegendSuspended->hide();
@@ -253,7 +256,6 @@ MainWindow::MainWindow(QWidget *parent)
         ui->inputName,
         ui->inputUsername,
         ui->inputCardNumber,
-        ui->comboAccountType,
         ui->comboStatus,
         ui->inputSavings
     };
@@ -262,8 +264,7 @@ MainWindow::MainWindow(QWidget *parent)
         widget->installEventFilter(this);
     }
 
-    connect(ui->comboAccountType, &QComboBox::currentTextChanged,
-            this, &MainWindow::updateAutomatedInterest);
+
     connect(ui->inputSavings, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
             this, [this](double) { updateAutomatedInterest(); updateInvestmentChart(); });
     setFormMode(false);
@@ -297,10 +298,7 @@ void MainWindow::on_btnAdd_clicked()
     QString cardNumber  = ui->inputCardNumber->text().trimmed();
     QString compactCard = cardNumber;
     compactCard.remove(' ');
-    QString accountType = ui->comboAccountType->currentText();
     double  savings     = ui->inputSavings->value();
-    double  investments = 0.0;
-    int     months      = 0;
     double  interest    = fixedInterestRate(savings);
     ui->spinInterest->setValue(interest);
     QString status      = ui->comboStatus->currentText().isEmpty()
@@ -327,10 +325,8 @@ void MainWindow::on_btnAdd_clicked()
     holder.cardNumber     = cardNumber;
     holder.name           = name;
     holder.userName       = userName;
-    holder.accountType    = accountType;
+    holder.accountType    = "Savings";
     holder.savings        = savings;
-    holder.investments    = investments;
-    holder.monthsInvested = months;
     holder.interestRate   = interest;
     holder.status         = status;
 
@@ -483,7 +479,7 @@ void MainWindow::on_btnDashboard_clicked()
 {
     setActiveNav(ui->btnDashboard);
     ui->screenTitle->setText("Banking Tracker Dashboard");
-    ui->screenSubtitle->setText("Monitor account savings, account status, and administrative activity.");
+    ui->screenSubtitle->setText("Monitor account");
     ui->searchBar->clear();
     ui->categoryFilter->setCurrentText("All");
     ui->sortCombo->setCurrentIndex(0);
@@ -493,25 +489,6 @@ void MainWindow::on_btnDashboard_clicked()
 }
 
 
-void MainWindow::on_btnTransferMenu_clicked()
-{
-    setActiveNav(ui->btnTransferMenu);
-    ui->screenTitle->setText("Transfer Workspace");
-    ui->screenSubtitle->setText("Select an account record before recording transfer details.");
-    ui->categoryFilter->setCurrentText("All");
-    ui->tableWidget->setFocus();
-}
-
-
-void MainWindow::on_btnSavingsMenu_clicked()
-{
-    setActiveNav(ui->btnSavingsMenu);
-    ui->screenTitle->setText("Savings Accounts");
-    ui->screenSubtitle->setText("Filtered view for savings account records.");
-    ui->categoryFilter->setCurrentText("Savings");
-    applyFilters();
-    ui->tableWidget->setFocus();
-}
 
 
 void MainWindow::on_btnCreateMenu_clicked()
@@ -527,18 +504,6 @@ void MainWindow::on_btnCreateMenu_clicked()
 }
 
 
-void MainWindow::on_btnTransactionsMenu_clicked()
-{
-    setActiveNav(ui->btnTransactionsMenu);
-    showAdminLogsView();
-}
-
-
-void MainWindow::on_btnReportsMenu_clicked()
-{
-    setActiveNav(ui->btnReportsMenu);
-    showAccountsView();
-}
 
 
 void MainWindow::on_btnAdminLogsMenu_clicked()
@@ -1359,8 +1324,6 @@ void MainWindow::loadAccounts()
         holder.userName = object.value("userName").toString();
         holder.accountType = object.value("accountType").toString("Savings");
         holder.savings = object.value("savings").toDouble();
-        holder.investments = object.value("investments").toDouble();
-        holder.monthsInvested = object.value("monthsInvested").toInt();
         holder.interestRate = fixedInterestRate(holder.savings);
         holder.status = object.value("status").toString(computeStatus(holder.savings));
 
@@ -1381,8 +1344,6 @@ void MainWindow::saveAccounts() const
         object["userName"] = holder.userName;
         object["accountType"] = holder.accountType;
         object["savings"] = holder.savings;
-        object["investments"] = holder.investments;
-        object["monthsInvested"] = holder.monthsInvested;
         object["interestRate"] = holder.interestRate;
         object["status"] = holder.status;
         savedAccounts.append(object);

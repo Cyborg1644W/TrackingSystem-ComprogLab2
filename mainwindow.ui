@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>BankTracker Admin Console</string>
+   <string> FinTrack </string>
   </property>
   <property name="styleSheet">
    <string notr="true">QMainWindow {
@@ -346,7 +346,7 @@ QListWidget::item:selected {
             <string notr="true">background: #1F7A68; border-radius: 10px; color: #FFFFFF; font-size: 18px; font-weight: 900;</string>
            </property>
            <property name="text">
-            <string>BT</string>
+            <string>FT</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -364,7 +364,7 @@ QListWidget::item:selected {
               <string notr="true">font-size: 18px; font-weight: 900;</string>
              </property>
              <property name="text">
-              <string>BankTracker</string>
+              <string>FinTrack</string>
              </property>
             </widget>
            </item>
@@ -374,7 +374,7 @@ QListWidget::item:selected {
               <string notr="true">color: #93A7B5; font-size: 11px; font-weight: 700;</string>
              </property>
              <property name="text">
-              <string>Admin Console</string>
+              <string>Track it. Grow it.</string>
              </property>
             </widget>
            </item>
@@ -554,14 +554,14 @@ QListWidget::item:selected {
            <item>
             <widget class="QLabel" name="screenTitle">
              <property name="text">
-              <string>Banking Tracker Dashboard</string>
+              <string> Dashboard</string>
              </property>
             </widget>
            </item>
            <item>
             <widget class="QLabel" name="screenSubtitle">
              <property name="text">
-              <string>Monitor account savings, account status, and administrative activity.</string>
+              <string>Monitor account </string>
              </property>
             </widget>
            </item>
@@ -710,7 +710,7 @@ QListWidget::item:selected {
             <item>
              <widget class="QLabel" name="mutedLabel2">
               <property name="text">
-               <string>Across all active records</string>
+               <string>Across all records</string>
               </property>
              </widget>
             </item>
